@@ -1,8 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import socket from "../socket";
+import { AppContext } from "../AppContext";
 
 function DisplayHeader(){
     const [users, setUsers] = useState(0);
+    const { setId } = useContext(AppContext);
+
+    useEffect(() => {
+        socket.on("setId", () => {
+            setId(socket.id);
+        })
+    })
 
     useEffect(() => {
         socket.emit("getUsers");

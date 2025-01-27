@@ -12,7 +12,6 @@ function RandomButton(){
             let newRoom = crypto.randomUUID();
             setClicked(true);
             setRoom(newRoom);
-            console.log(newRoom);
             socket.emit("find", {name: name, room: newRoom, random: true});
         }
     }

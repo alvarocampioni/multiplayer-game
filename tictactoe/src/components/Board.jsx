@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 import { AppContext } from "../AppContext";
 
 function Board(){
-    const { room, setRoom, name } = useContext(AppContext);
+    const { room, setRoom, name, id } = useContext(AppContext);
     const [matrix, setMatrix] = useState([
                 [null, null, null],
                 [null, null, null],
@@ -29,11 +29,10 @@ function Board(){
     let playerObj;
     useEffect(() => {
         socket.on("find", (e) => {
-            console.log("Received find");
             const foundRoom = e.players;
             setRoom(foundRoom.player1.room);
 
-            if (foundRoom.player1.name === name) {
+            if (foundRoom.player1.id === id) {
                 playerObj = foundRoom.player1;
                 setOppName(foundRoom.player2.name);
                 setOppSymbol(foundRoom.player2.symbol);
@@ -50,7 +49,6 @@ function Board(){
         });
         return () => socket.off("find");
     }, [isPlaying])
-
 
     useEffect(() => {
         socket.on("closed", () => {
@@ -287,7 +285,7 @@ function Board(){
                         )}
                     </div>
                     { isPlaying &&
-                    <div class="timer-container">
+                    <div className="timer-container">
                         <div className="timer" style={{backgroundColor: isTurn ? "#007bff" : "#ff5733"}}>Time: {countTime}sec</div>
                     </div>
                     }

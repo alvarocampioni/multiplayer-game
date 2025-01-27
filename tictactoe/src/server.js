@@ -11,7 +11,7 @@ app.use(express.static("public"));
 app.use(cors({ origin: "*"}));
 
 let games = {};
-let queueGames = [];
+let queueGames = {};
 let closedGames = [];
 let playAgain = {}
 
@@ -32,7 +32,7 @@ let users = 0;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 io.on("connection", (socket) => {
-  console.log("Something connected");
+  io.to(socket.id).emit("setId");
   users++;
 
     socket.on("find", (data) => {
@@ -40,11 +40,12 @@ io.on("connection", (socket) => {
         io.to(socket.id).emit("closed");
       }
 
-      if(!data.random && data.name && data.room && !closedGames.includes(data.room)){//create the private room
+      if(!data.random && data.name && data.room && !closedGames.includes(data.room)){ //create the private room
         console.log(data.room);
         socket.join(data.room);
         if(!games[data.room]){
           const player1 = {
+            id: socket.id,
             name: data.name,
             symbol: Math.random() < 0.5 ? "X" : "O",
             isTurn: Math.random() < 0.5,
@@ -53,12 +54,10 @@ io.on("connection", (socket) => {
           games[data.room] = {
             player1
           };
-      } else {
-        if(data.name === games[data.room].player1.name){ //join the private room
-          data.name = `${data.name}2`;
-        }
+      } else { //join the private room
         socket.join(data.room);
         const player2 = {
+          id: socket.id,
           name: data.name,
           symbol: games[data.room].player1.symbol === "X" ? "O" : "X",
           isTurn: !games[data.room].player1.isTurn,
@@ -69,13 +68,13 @@ io.on("connection", (socket) => {
         closedGames.push(data.room);
         delete games[data.room];
       }
-    } else if(queueGames.length > 0 && data.random){ //join an open room
-        let room = queueGames.shift();
+    } else if(Object.keys(queueGames)[0] && data.random){ //join an open room
+        let key = Object.keys(queueGames)[0];
+        let room = queueGames[key];
+        delete queueGames[key];
         socket.join(room);
-        if(data.name === games[room].player1.name){
-          data.name = `${data.name}2`;
-        }
         const player2 = {
+          id: socket.id,
           name: data.name,
           symbol: games[room].player1.symbol === "X" ? "O" : "X",
           isTurn: !games[room].player1.isTurn,
@@ -91,6 +90,7 @@ io.on("connection", (socket) => {
         socket.join(data.room);
         if(!games[room]){
           const player1 = {
+            id: socket.id,
             name: data.name,
             symbol: Math.random() < 0.5 ? "X" : "O",
             isTurn: Math.random() < 0.5,
@@ -99,7 +99,7 @@ io.on("connection", (socket) => {
           games[room] = {
             player1
           };
-          queueGames.push(room);
+          queueGames[socket.id] = room;
         }
       }
     });
@@ -116,10 +116,8 @@ io.on("connection", (socket) => {
       });
 
     socket.on("leave-queue", (data) => {
-      let index = queueGames.indexOf(data.room);
-      if(index > -1){
-        queueGames.splice(index, 1);
-      }
+      console.log("Left queue");
+      delete queueGames[socket.id];
       delete games[data.room];
       socket.leave(data.room);
     });
@@ -154,18 +152,10 @@ io.on("connection", (socket) => {
 
       else if(result === "X" || result === "O"){
         io.to(e.room).emit("play", {matrix: matrix, result: matrix[row][col]});
-        const index = closedGames.indexOf(e.room);
-        if(index > -1){
-          closedGames.splice(index, 1);
-        }
       }
 
       else if(result === "T") {
         io.to(e.room).emit("play", {matrix: matrix, result: "tie"});
-        const index = closedGames.indexOf(e.room);
-        if(index > -1){
-          closedGames.splice(index, 1);
-        }
       }
 
     });
@@ -174,11 +164,11 @@ io.on("connection", (socket) => {
       io.emit("users", { users });
     });
 
-    socket.on("disconnect", (socket) => {
-      console.log("disconnected:", socket);
+    socket.on("disconnect", () => {
       users--;
+      openEmptyClosedGames();
+      delete queueGames[socket.id];
       io.emit("users", { users });
-
     });
   });
 
@@ -211,7 +201,13 @@ io.on("connection", (socket) => {
     return "T"; // Tie
   }
 
-  
+  async function openEmptyClosedGames() {
+    for (let i = closedGames.length - 1; i >= 0; i--) {
+      if (await numberOfClient(closedGames[i])) {
+        closedGames.splice(i, 1);
+      }
+    }
+  }
   
 
 
