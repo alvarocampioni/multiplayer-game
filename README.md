@@ -2,6 +2,8 @@
 # Multiplayer Tic-Tac-Toe Game
 A Multiplayer Tic-Tac-Toe Game, play with strangers or in private rooms, friendly and interactive UI.
 
+Play now: [multictactoe.netlify.app](https://multictactoe.netlify.app/)
+
 
 
 
